@@ -1,26 +1,311 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reflex Rush</title>
-    <link rel="stylesheet" href="style.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reflex Rush</title>
+
+<style>
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+}
+
+body{
+    width:100vw;
+    height:100vh;
+    overflow:hidden;
+    font-family: "Segoe UI", sans-serif;
+}
+
+#game{
+    width:100vw;
+    height:100vh;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    align-items:center;
+    transition:all .3s ease;
+    text-align:center;
+    color:white;
+}
+
+.idle{
+    background:linear-gradient(-45deg,#0f172a,#111827,#1e293b,#0f172a);
+    background-size:400% 400%;
+    animation:gradientMove 10s ease infinite;
+}
+
+.waiting{
+    background:#7f1d1d;
+    animation:pulseRed 1.2s infinite;
+}
+
+.ready{
+    background:#16a34a;
+    animation:flashGreen .4s ease;
+}
+
+.result{
+    background:linear-gradient(135deg,#111827,#1e293b);
+}
+
+.title{
+    font-size:5rem;
+    font-weight:900;
+    letter-spacing:4px;
+    text-shadow:0 0 20px rgba(255,255,255,.25);
+}
+
+.mainText{
+    font-size:4rem;
+    font-weight:800;
+    margin-top:20px;
+}
+
+.subText{
+    font-size:1.2rem;
+    opacity:.8;
+    margin-top:15px;
+}
+
+.card{
+    margin-top:30px;
+    padding:20px 40px;
+    background:rgba(255,255,255,.08);
+    backdrop-filter:blur(12px);
+    border:1px solid rgba(255,255,255,.15);
+    border-radius:20px;
+}
+
+.best{
+    margin-top:10px;
+    font-size:1.1rem;
+}
+
+.rank{
+    font-size:2rem;
+    margin-top:20px;
+    font-weight:bold;
+}
+
+.glow{
+    animation:glow 1.2s infinite alternate;
+}
+
+.footer{
+    position:absolute;
+    bottom:25px;
+    font-size:.9rem;
+    opacity:.6;
+}
+
+@keyframes pulseRed{
+    0%{background:#7f1d1d;}
+    50%{background:#991b1b;}
+    100%{background:#7f1d1d;}
+}
+
+@keyframes flashGreen{
+    from{
+        filter:brightness(2);
+    }
+    to{
+        filter:brightness(1);
+    }
+}
+
+@keyframes gradientMove{
+    0%{background-position:0% 50%;}
+    50%{background-position:100% 50%;}
+    100%{background-position:0% 50%;}
+}
+
+@keyframes glow{
+    from{
+        text-shadow:0 0 10px #fff;
+    }
+    to{
+        text-shadow:0 0 30px #fff;
+    }
+}
+
+@media(max-width:768px){
+
+    .title{
+        font-size:3rem;
+    }
+
+    .mainText{
+        font-size:2rem;
+    }
+
+    .rank{
+        font-size:1.5rem;
+    }
+}
+</style>
 </head>
+
 <body>
 
-    <h1>⚡ Reflex Rush</h1>
-    <p id="message">Click Start and wait for GREEN!</p>
+<div id="game" class="idle">
 
-    <div id="game-area">
-        Click Here
+    <div class="title">⚡ REFLEX RUSH</div>
+
+    <div class="mainText glow" id="mainText">
+        PRESS SPACE TO START
     </div>
 
-    <button id="start-btn">Start Game</button>
+    <div class="card">
+        <div id="info">
+            Test your reaction speed.
+        </div>
 
-    <h2 id="result"></h2>
-    <h3 id="best"></h3>
+        <div class="best" id="bestScore">
+            Best: --
+        </div>
+    </div>
 
-    <script src="script.js"></script>
+    <div class="footer">
+        SPACE = Start • React • Replay
+    </div>
+
+</div>
+
+<script>
+
+const game = document.getElementById("game");
+const mainText = document.getElementById("mainText");
+const info = document.getElementById("info");
+const bestElement = document.getElementById("bestScore");
+
+let state = "idle";
+let startTime = 0;
+let timeout = null;
+
+let bestScore = localStorage.getItem("reflexRushBest");
+
+if(bestScore){
+    bestElement.innerText = `Best: ${bestScore} ms`;
+}
+
+function getRank(ms){
+
+    if(ms < 150) return "⚡ LIGHTNING";
+    if(ms < 250) return "🚀 ELITE";
+    if(ms < 350) return "🔥 GOOD";
+    if(ms < 500) return "😴 SLOW";
+    return "🐢 TURTLE";
+}
+
+function startWaiting(){
+
+    state = "waiting";
+
+    game.className = "waiting";
+
+    mainText.innerHTML = "WAIT...";
+    info.innerHTML = "Don't press SPACE yet.";
+
+    const randomDelay =
+        Math.floor(Math.random()*3000)+2000;
+
+    timeout = setTimeout(() => {
+
+        state = "ready";
+
+        game.className = "ready";
+
+        mainText.innerHTML = "NOW!";
+
+        info.innerHTML = "PRESS SPACE!";
+
+        startTime = performance.now();
+
+    }, randomDelay);
+}
+
+function falseStart(){
+
+    clearTimeout(timeout);
+
+    state = "result";
+
+    game.className = "result";
+
+    mainText.innerHTML = "❌ FALSE START";
+
+    info.innerHTML =
+        "You pressed too early.";
+
+    bestElement.innerHTML =
+        "Press SPACE to try again.";
+}
+
+function showResult(){
+
+    const reaction =
+        Math.round(performance.now() - startTime);
+
+    state = "result";
+
+    game.className = "result";
+
+    mainText.innerHTML =
+        `⚡ ${reaction} ms`;
+
+    const rank = getRank(reaction);
+
+    info.innerHTML =
+        `<div class="rank">${rank}</div>`;
+
+    if(
+        !bestScore ||
+        reaction < parseInt(bestScore)
+    ){
+        bestScore = reaction;
+
+        localStorage.setItem(
+            "reflexRushBest",
+            reaction
+        );
+    }
+
+    bestElement.innerHTML =
+        `🏆 Best: ${bestScore} ms<br><br>
+         Press SPACE to play again`;
+}
+
+document.addEventListener("keydown", (e)=>{
+
+    if(e.code !== "Space") return;
+
+    e.preventDefault();
+
+    switch(state){
+
+        case "idle":
+            startWaiting();
+            break;
+
+        case "waiting":
+            falseStart();
+            break;
+
+        case "ready":
+            showResult();
+            break;
+
+        case "result":
+            startWaiting();
+            break;
+    }
+
+});
+
+</script>
 
 </body>
 </html>
